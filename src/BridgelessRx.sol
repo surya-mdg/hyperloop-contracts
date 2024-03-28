@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
+import {Ed25519} from "./libraries/Ed25519.sol";
+
 contract BridgelessRx{
     uint256 constant WINDOW_SIZE = 12; //Curently represented as hours
     uint256 constant WINDOW_DEPOSIT_LIMIT = 3 ether;
@@ -24,33 +26,41 @@ contract BridgelessRx{
         uint256 amount;
     }
 
-    function executeMessage(bytes[] memory sigs, bytes[] memory txnHashes) external {
-        uint256 totalTransactionAmount = 0;
-        for(uint256 i = 0; i < txnHashes.length; i++){
-            (, address to, uint256 amount) = abi.decode(txnHashes[i], (uint256, address, uint256));
+    struct BridgelessTransaction{
+        uint256 actionId;
+        address to;
+        uint256 amount;
+    }
 
-            address signer = verifySig(sigs[i]);
-            require(sigCommittee[signer], "BridgelessRx: signer not part of committee");
-            require(!sigState[txnHashes[i]][signer], "BridgelessRx: signer has already been verified");
+    function executeMessage(bytes memory sig, bytes memory txn) public {
+        address signer = verifySig(sig);
+        require(sigCommittee[signer], "BridgelessRx: signer not part of committee");
+        require(!sigState[txn][signer], "BridgelessRx: signer has already been verified");
+        sigBuffer[txn].push(sig);
 
-            sigBuffer[txnHashes[i]].push(sigs[i]);
-            if(sigBuffer[txnHashes[i]].length > committeSize/2){
-                updateSlidingWindow(block.timestamp - (WINDOW_SIZE * 3600));
+        BridgelessTransaction[] memory txnHashes = abi.decode(txn, (BridgelessTransaction[]));
+
+        if(sigBuffer[txn].length > committeSize/2){
+            uint256 totalTransactionAmount = 0;
+            updateSlidingWindow(block.timestamp - (WINDOW_SIZE * 3600));
+
+            for(uint256 i = 0; i < txnHashes.length; i++){
+                (, address to, uint256 amount) = (txnHashes[i].actionId, txnHashes[i].to, txnHashes[i].amount);
+
                 totalTransactionAmount += amount;
-                require(totalAmount + totalTransactionAmount <= WINDOW_DEPOSIT_LIMIT, "BridgelessRx: amount to be transferred exceeds slinding window transfer limit");           
-
+                require(totalAmount + totalTransactionAmount <= WINDOW_DEPOSIT_LIMIT, "BridgelessRx: amount to be transferred exceeds sliding window transfer limit");           
                 (bool success, ) = to.call{value: amount}("");
                 require(success, "BridgelessRx: transfer failed");
                 emit BridgelessTransfer(to, amount);
             }
-        }
 
-        transactions.push(Transaction(block.timestamp, totalTransactionAmount));
-        totalAmount += totalTransactionAmount;
+            transactions.push(Transaction(block.timestamp, totalTransactionAmount));
+            totalAmount += totalTransactionAmount;
+        }
     } 
 
-    function verifySig(bytes memory _sig) internal view returns(address){
-        // ec25519 logic
+    function verifySig(/*bytes32 publicKey, bytes32 r, bytes32 s, bytes memory message*/ bytes memory sig) internal view returns(address){
+        //require(Ed25519.verify(publicKey, r, s, message), "BridgelessRx: signature invalid");
         return msg.sender;
     }
     
