@@ -2,15 +2,15 @@
 pragma solidity ^0.8.24;
 
 contract BridgelessTx{
-    uint256 constant WINDOW_SIZE = 12; //Curently represented as hours
-    uint256 constant WINDOW_DEPOSIT_LIMIT = 2 ether;
-    uint256 constant CONVERSION_DECIMALS = 1e18;
+    uint256 public constant WINDOW_SIZE = 12; //Curently represented as hours
+    uint256 public constant WINDOW_DEPOSIT_LIMIT = 2 ether;
+    uint256 public constant CONVERSION_DECIMALS = 1e18;
 
     uint256 chainActionId = 0;
     uint256 totalAmount = 0;
     uint256 slidingWindowIndex = 0;
     Transaction[] transactions;
-    mapping(uint256 => uint256) conversionRates;
+    mapping(uint256 => uint256) public conversionRates;
 
     event BridgelessTransaction(
         uint256 globalActionId,
@@ -38,11 +38,19 @@ contract BridgelessTx{
         conversionRates[1] = 3 * 1e21;
     }
 
+    /*** 
+     * @notice: Generates unique action ID
+     * @return: unique action ID
+    */
     function nextGlobalActionId() private returns (uint256) { 
         return uint256(keccak256(abi.encodePacked(chainActionId++, block.chainid, address(this), block.timestamp)));
     }
 
-    function postMessage(BridgelessTransfer[] memory txns) public payable {
+    /*** 
+     * @notice: Check if transaction/batch of transactions don't violate sliding window limit & emit transactions
+     * @param: txns - transactions to be made
+    */
+    function postMessage(BridgelessTransfer[] memory txns) external payable {
         require(msg.value > 0, "BridgelessTx: msg.value needs to be greater than 0");
         updateSlidingWindow(block.timestamp - (WINDOW_SIZE * 3600));
 
@@ -69,7 +77,10 @@ contract BridgelessTx{
         totalAmount += totalTransactionAmount;
     }
 
-
+    /*** 
+     * @notice: Update the total transaction amount made within the slinding window duraction
+     * @param: _startTime - current starting time of the slinding window 
+    */
     function updateSlidingWindow(uint256 _startTime) internal {
         while(slidingWindowIndex < transactions.length){
             if(transactions[slidingWindowIndex].timestamp < _startTime){

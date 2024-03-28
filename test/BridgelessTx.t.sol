@@ -42,8 +42,6 @@ contract SourceTest is Test {
         vm.warp(2 days);
         vm.startPrank(user1);
 
-        uint256 _chainId = 0;
-        uint256 _actionId = uint256(keccak256(abi.encodePacked(_chainId, block.chainid, address(btx), block.timestamp)));
         BridgelessTx.BridgelessTransfer memory message = BridgelessTx.BridgelessTransfer("0x000d", 1, 4 ether);     
         messageArr.push(message);
 

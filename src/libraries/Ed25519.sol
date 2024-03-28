@@ -279,59 +279,52 @@ library Ed25519 {
         bytes32 s,
         bytes memory m
     ) internal pure returns (bool) {
-            uint256 hh;
-            // Step 1: compute SHA-512(R, A, M)
-            {
-                bytes memory rs = new bytes(k.length + r.length + m.length);
-                for (uint256 i = 0; i < r.length; i++) {
-                    rs[i] = r[i];
-                }
-                for (uint256 i = 0; i < k.length; i++) {
-                    rs[i + 32] = k[i];
-                }
-                    for (uint256 i = 0; i < m.length; i++) {
-                    rs[i + 64] = m[i];
-                }
-                uint64[8] memory result = Sha512.hash(rs);
-
-                uint256 h0 = uint256(result[0]) | uint256(result[1]) << 64 | uint256(result[2]) << 128 | uint256(result[3]) << 192;
-
-                h0 =
-                    ((h0 & 0xff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff) << 8) |
-                    ((h0 & 0xff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00) >> 8);
-                h0 =
-                    ((h0 & 0xffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff) << 16) |
-                    ((h0 & 0xffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000) >> 16);
-                h0 =
-                    ((h0 & 0xffffffff_00000000_ffffffff_00000000_ffffffff_00000000_ffffffff) << 32) |
-                    ((h0 & 0xffffffff_00000000_ffffffff_00000000_ffffffff_00000000_ffffffff_00000000) >> 32);
-
-                uint256 h1 = uint256(result[4]) | uint256(result[5]) << 64 | uint256(result[6]) << 128 | uint256(result[7]) << 192;
-
-                h1 =
-                    ((h1 & 0xff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff) << 8) |
-                    ((h1 & 0xff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00) >> 8);
-                h1 =
-                    ((h1 & 0xffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff) << 16) |
-                    ((h1 & 0xffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000) >> 16);
-                h1 =
-                    ((h1 & 0xffffffff_00000000_ffffffff_00000000_ffffffff_00000000_ffffffff) << 32) |
-                    ((h1 & 0xffffffff_00000000_ffffffff_00000000_ffffffff_00000000_ffffffff_00000000) >> 32);
-                hh = addmod(
-                    h0,
-                    mulmod(
-                        h1,
-                        0xfffffff_ffffffff_ffffffff_fffffffe_c6ef5bf4_737dcf70_d6ec3174_8d98951d,
-                        0x10000000_00000000_00000000_00000000_14def9de_a2f79cd6_5812631a_5cf5d3ed
-                    ),
-                    0x10000000_00000000_00000000_00000000_14def9de_a2f79cd6_5812631a_5cf5d3ed
-                );
+        uint256 hh;
+        // Step 1: compute SHA-512(R, A, M)
+        {
+            bytes memory rs = new bytes(k.length + r.length + m.length);
+            for (uint256 i = 0; i < r.length; i++) {
+                rs[i] = r[i];
             }
-            //return true;
-            unchecked {
-                
-            
-            // Step 2: unpack k
+            for (uint256 i = 0; i < k.length; i++) {
+                rs[i + 32] = k[i];
+            }
+                for (uint256 i = 0; i < m.length; i++) {
+                rs[i + 64] = m[i];
+            }
+            uint64[8] memory result = Sha512.hash(rs);
+            uint256 h0 = uint256(result[0]) | uint256(result[1]) << 64 | uint256(result[2]) << 128 | uint256(result[3]) << 192;
+            h0 =
+                ((h0 & 0xff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff) << 8) |
+                ((h0 & 0xff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00) >> 8);
+            h0 =
+                ((h0 & 0xffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff) << 16) |
+                ((h0 & 0xffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000) >> 16);
+            h0 =
+                ((h0 & 0xffffffff_00000000_ffffffff_00000000_ffffffff_00000000_ffffffff) << 32) |
+                ((h0 & 0xffffffff_00000000_ffffffff_00000000_ffffffff_00000000_ffffffff_00000000) >> 32);
+            uint256 h1 = uint256(result[4]) | uint256(result[5]) << 64 | uint256(result[6]) << 128 | uint256(result[7]) << 192;
+            h1 =
+                ((h1 & 0xff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff) << 8) |
+                ((h1 & 0xff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00) >> 8);
+            h1 =
+                ((h1 & 0xffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff_0000ffff) << 16) |
+                ((h1 & 0xffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000_ffff0000) >> 16);
+            h1 =
+                ((h1 & 0xffffffff_00000000_ffffffff_00000000_ffffffff_00000000_ffffffff) << 32) |
+                ((h1 & 0xffffffff_00000000_ffffffff_00000000_ffffffff_00000000_ffffffff_00000000) >> 32);
+            hh = addmod(
+                h0,
+                mulmod(
+                    h1,
+                    0xfffffff_ffffffff_ffffffff_fffffffe_c6ef5bf4_737dcf70_d6ec3174_8d98951d,
+                    0x10000000_00000000_00000000_00000000_14def9de_a2f79cd6_5812631a_5cf5d3ed
+                ),
+                0x10000000_00000000_00000000_00000000_14def9de_a2f79cd6_5812631a_5cf5d3ed
+            );
+        }
+        // Step 2: unpack k
+        unchecked {
             k = bytes32(
                 ((uint256(k) & 0xff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff_00ff00ff) << 8) |
                     ((uint256(k) & 0xff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00_ff00ff00) >> 8)
@@ -883,7 +876,8 @@ library Ed25519 {
                     ((uint256(vr) & 0xffffffff_ffffffff_00000000_00000000_ffffffff_ffffffff_00000000_00000000) >> 64)
             );
             vr = bytes32((uint256(vr) << 128) | (uint256(vr) >> 128));
+            
             return vr == r;
-            }
+        }
     }
 }
