@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Ed25519} from "./libraries/Ed25519.sol";
+import {Ed25519} from "../lib/encryption/Ed25519.sol";
 
 contract BridgelessRx{
     uint256 public constant WINDOW_SIZE = 12; // Currently represented in hours

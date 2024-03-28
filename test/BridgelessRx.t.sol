@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
 import {BridgelessRx} from "../src/BridgelessRx.sol";
-import {Ed25519} from "../src/libraries/Ed25519.sol";
+import {Ed25519} from "../lib/encryption/Ed25519.sol";
 
 contract SourceTest is Test {
     BridgelessRx public brx;
