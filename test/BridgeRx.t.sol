@@ -2,18 +2,18 @@
 pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
-import {BridgelessRx} from "../src/BridgelessRx.sol";
+import {BridgeRx} from "../src/BridgeRx.sol";
 import {Ed25519} from "../lib/encryption/Ed25519.sol";
 
 contract SourceTest is Test {
-    BridgelessRx public brx;
+    BridgeRx public brx;
     address public user1 = vm.addr(1);
     address public user2 = vm.addr(2);
     bytes32 public signer = 0x292C70EBBBD20F278DB008B93A76D39AD5D87299883E59BC2CD5900F2EB849C2;
-    BridgelessRx.BridgelessTransaction[] public txnHashes;
+    BridgeRx.BridgeTransaction[] public txnHashes;
 
     function setUp() public{
-        brx = new BridgelessRx();
+        brx = new BridgeRx();
         vm.deal(address(brx), 5 ether);
         vm.deal(user1, 5 ether);
         vm.deal(user2, 5 ether);
@@ -26,14 +26,14 @@ contract SourceTest is Test {
         vm.startPrank(user1);
         bytes memory sig = hex"CA69906813B443FAC1D047DA4E73472DA34B873D2B8C6698C185859F3DDB860C8C5E871FDA0510C9B37ADA883B85ED09B42A141817C4652B3AB4A67D2D8C1708";
 
-        txnHashes.push(BridgelessRx.BridgelessTransaction(1, user2, 1 ether));
-        txnHashes.push(BridgelessRx.BridgelessTransaction(1, user2, 1000000 wei));
+        txnHashes.push(BridgeRx.BridgeTransaction(1, user2, 1 ether));
+        txnHashes.push(BridgeRx.BridgeTransaction(1, user2, 1000000 wei));
 
         console.log("Balance Before: %d", user2.balance);
         brx.executeMessage(signer, sig, abi.encode(txnHashes));
         console.log("Balance After: %d", user2.balance);
 
-        vm.expectRevert("BridgelessRx: signer has already been verified");
+        vm.expectRevert("BridgeRx: signer has already been verified");
         brx.executeMessage(signer, sig, abi.encode(txnHashes));
 
         // abi.encode(txnHashes): 0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000002b5ad5c4795c026514f8317c7a215e218dccd6cf0000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000002b5ad5c4795c026514f8317c7a215e218dccd6cf00000000000000000000000000000000000000000000000000000000000f4240
@@ -44,10 +44,10 @@ contract SourceTest is Test {
         vm.startPrank(user1);
         bytes memory sig = hex"CA71E244797ABC62B7CD44B1C8BBDAD6E53299E39BD2EC2190E6A0B565828739565C1D7E5B9DED744394AE43A5FAED8778EFA23B0F53BDFF0810BE0C98BE2100";
         
-        txnHashes.push(BridgelessRx.BridgelessTransaction(1, user2, 4 ether));
+        txnHashes.push(BridgeRx.BridgeTransaction(1, user2, 4 ether));
 
         console.log("Balance Before: %d", user2.balance);
-        vm.expectRevert("BridgelessRx: amount to be transferred exceeds sliding window transfer limit");
+        vm.expectRevert("BridgeRx: amount to be transferred exceeds sliding window transfer limit");
         brx.executeMessage(signer, sig, abi.encode(txnHashes));
         console.log("Balance After: %d", user2.balance);
     }

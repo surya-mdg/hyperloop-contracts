@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Ed25519} from "../lib/encryption/Ed25519.sol";
+import {IHyperloop} from "../../interfaces/IHyperloop.sol";
+import {Ed25519} from "../../../../lib/encryption/Ed25519.sol";
 
-contract BridgelessRx{
+contract BridgeRx{
+    address public hyperloop;
+
     uint256 public constant WINDOW_SIZE = 12; // Currently represented in hours
     uint256 public constant WINDOW_DEPOSIT_LIMIT = 3 ether;
 
@@ -12,7 +15,6 @@ contract BridgelessRx{
     Transaction[] completedTxns;
 
     uint256 public sigCommitteeSize = 0;
-    mapping(bytes32 => bool) public sigCommittee;
     mapping(bytes => bytes[]) public sigBuffer; // Can use uint256 instead of bytes[] if signatures need not be stored
     mapping(bytes => mapping(bytes => bool)) public txnState; // To prevent duplicate signatures
 
@@ -32,15 +34,19 @@ contract BridgelessRx{
         uint256 amount;
     }
 
+    constructor(address _hyperloop) {
+        hyperloop = _hyperloop;
+    }
+
     /*** 
      * @notice: Performs the completedTxns which have valid ed25519 signature
      * @param: signer - public key of the node that signed the completedTxns
      * @param: sig - ed25519 signature generated for the message
      * @param: txn - completedTxns for which the signature has been generated
     */
-    function executeMessage(bytes32 signer, bytes memory sig, bytes memory txn) external {
-        verifySig(signer, sig, txn);
-        require(sigCommittee[signer], "BridgelessRx: signer not part of committee");
+    function executeMessage(bytes32 signer, bytes memory sig, bytes memory encodedMsg) external {
+        (bool verified, , bytes memory txn, ) = IHyperloop(hyperloop).scanAndVerifyData(signer, sig, encodedMsg);
+        require(verified, "BridgeRx: signature invalid");
         require(!txnState[txn][sig], "BridgelessRx: signer has already been verified");
         sigBuffer[txn].push(sig);
         txnState[txn][sig] = true;
@@ -96,15 +102,5 @@ contract BridgelessRx{
             }
             slidingWindowIndex++;
         }
-    }
-
-    // TEST Function
-    /*** 
-     * @notice: Updates the signature committee
-     * @param: member - public key of node
-     * @param: state - is node part of signature committee
-    */
-    function updateCommittee(bytes32 member, bool state) external{
-        sigCommittee[member] = state;
     }
 }

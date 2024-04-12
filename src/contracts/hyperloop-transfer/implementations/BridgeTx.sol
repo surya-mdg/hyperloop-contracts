@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-contract BridgelessTx{
+import {IHyperloop} from "../../interfaces/IHyperloop.sol";
+
+contract BridgeTx{
+    address public hyperloop;
+
     uint256 public constant WINDOW_SIZE = 12; //Curently represented as hours
     uint256 public constant WINDOW_DEPOSIT_LIMIT = 2 ether;
     uint256 public constant CONVERSION_DECIMALS = 1e18;
@@ -33,7 +37,8 @@ contract BridgelessTx{
         uint256 amount;
     }
 
-    constructor() {
+    constructor(address _hyperloop) {
+        hyperloop = _hyperloop;
         // Currently random value
         conversionRates[1] = 3 * 1e21;
     }
@@ -51,8 +56,11 @@ contract BridgelessTx{
      * @param: txns - transactions to be made
     */
     function postMessage(BridgelessTransfer[] memory txns) external payable {
-        require(msg.value > 0, "BridgelessTx: msg.value needs to be greater than 0");
+        uint256 currentBaseFee = IHyperloop(hyperloop).getCurrentBaseFee();
+
+        require(msg.value > currentBaseFee, "BridgelessTx: msg.value needs to be greater than 0");
         updateSlidingWindow(block.timestamp - (WINDOW_SIZE * 3600));
+
 
         uint256 totalTransactionAmount = 0;
         for (uint256 i = 0; i < txns.length; i++) {
@@ -61,7 +69,7 @@ contract BridgelessTx{
             totalTransactionAmount += txn.amount;
             require(totalAmount + totalTransactionAmount <= WINDOW_DEPOSIT_LIMIT, "BridgelessTx: amount to be transferred exceeds slinding window transfer limit");
 
-            emit BridgelessTransaction(
+            bytes memory messageData = abi.encode(
                 nextGlobalActionId(),
                 msg.sender,
                 txn.foreignAddress,
@@ -70,9 +78,12 @@ contract BridgelessTx{
                 conversionRates[txn.foreignChainId],
                 CONVERSION_DECIMALS
             );
+
+            //Post Message
+            IHyperloop(hyperloop).postMessage{value: currentBaseFee}(10, messageData, 10);
         }
 
-        require(totalTransactionAmount == msg.value, "BridgelessTx: total transaction amount does not match msg.value");
+        require(totalTransactionAmount == msg.value - currentBaseFee, "BridgelessTx: total transaction amount does not match msg.value");
         transactions.push(Transaction(block.timestamp, totalTransactionAmount));
         totalAmount += totalTransactionAmount;
     }

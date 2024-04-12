@@ -2,14 +2,14 @@
 pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
-import {BridgelessTx} from "../src/BridgelessTx.sol";
+import {BridgeTx} from "../src/BridgeTx.sol";
 
 contract SourceTest is Test {
-    BridgelessTx public btx;
+    BridgeTx public btx;
     address public user1 = vm.addr(1);
-    BridgelessTx.BridgelessTransfer[] public messageArr;
+    BridgeTx.BridgeTransfer[] public messageArr;
 
-    event BridgelessTransaction(
+    event BridgeTransaction(
         uint256 globalActionId,
         address from,
         string foreignAddress,
@@ -20,7 +20,7 @@ contract SourceTest is Test {
     );
 
     function setUp() public{
-        btx = new BridgelessTx();
+        btx = new BridgeTx();
         vm.deal(user1, 20 ether);
     }
 
@@ -30,11 +30,11 @@ contract SourceTest is Test {
 
         uint256 _chainId = 0;
         uint256 _actionId = uint256(keccak256(abi.encodePacked(_chainId, block.chainid, address(btx), block.timestamp)));
-        BridgelessTx.BridgelessTransfer memory message = BridgelessTx.BridgelessTransfer("0x000d", 1, 1 ether);     
+        BridgeTx.BridgeTransfer memory message = BridgeTx.BridgeTransfer("0x000d", 1, 1 ether);     
         messageArr.push(message);
 
         vm.expectEmit(false, false, false, true);
-        emit BridgelessTransaction(_actionId, user1, "0x000d", 1, 1 ether, 3 * 1e21, 1e18);
+        emit BridgeTransaction(_actionId, user1, "0x000d", 1, 1 ether, 3 * 1e21, 1e18);
         btx.postMessage{value: 1 ether}(messageArr);
     }
 
@@ -42,10 +42,10 @@ contract SourceTest is Test {
         vm.warp(2 days);
         vm.startPrank(user1);
 
-        BridgelessTx.BridgelessTransfer memory message = BridgelessTx.BridgelessTransfer("0x000d", 1, 4 ether);     
+        BridgeTx.BridgeTransfer memory message = BridgeTx.BridgeTransfer("0x000d", 1, 4 ether);     
         messageArr.push(message);
 
-        vm.expectRevert("BridgelessTx: amount to be transferred exceeds slinding window transfer limit");
+        vm.expectRevert("BridgeTx: amount to be transferred exceeds slinding window transfer limit");
         btx.postMessage{value: 1 ether}(messageArr);
     }
 }
