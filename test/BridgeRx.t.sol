@@ -39,17 +39,18 @@ contract SourceTest is Test {
         // abi.encode(txnHashes): 0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000002b5ad5c4795c026514f8317c7a215e218dccd6cf0000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000002b5ad5c4795c026514f8317c7a215e218dccd6cf00000000000000000000000000000000000000000000000000000000000f4240
     }
 
-    function test_ExecuteMessageFail() public{
+    function test_ExecuteMessageFail() public {
         vm.warp(2 days);
         vm.startPrank(user1);
-        bytes memory sig = hex"CA71E244797ABC62B7CD44B1C8BBDAD6E53299E39BD2EC2190E6A0B565828739565C1D7E5B9DED744394AE43A5FAED8778EFA23B0F53BDFF0810BE0C98BE2100";
-        
+
         txnHashes.push(BridgeRx.BridgeTransaction(1, user2, 4 ether));
 
-        console.log("Balance Before: %d", user2.balance);
+        uint beforeBalance = user2.balance;
         vm.expectRevert("BridgeRx: amount to be transferred exceeds sliding window transfer limit");
-        brx.executeMessage(signer, sig, abi.encode(txnHashes));
-        console.log("Balance After: %d", user2.balance);
+        brx.executeMessage(signer, differentValidSignature(), abi.encode(txnHashes));
+        uint afterBalance = user2.balance;
+
+        assertEq(afterBalance, beforeBalance, "Balance should not change due to transaction limit");
     }
 
     function test_Ed25519() pure public{
