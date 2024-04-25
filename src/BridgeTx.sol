@@ -11,6 +11,7 @@ contract BridgeTx{
     uint256 slidingWindowIndex = 0;
     Transaction[] transactions;
     mapping(uint256 => uint256) public conversionRates;
+    address public owner;
 
     event BridgeTransaction(
         uint256 globalActionId,
@@ -36,6 +37,7 @@ contract BridgeTx{
 
     constructor() {
         // Currently random value
+        owner = msg.sender;
         conversionRates[1] = 3 * 1e21;
         conversionRates[80002] = 3 * 1e21; // Amoy
 
@@ -95,5 +97,12 @@ contract BridgeTx{
             }
             slidingWindowIndex++;
         }
+    }
+
+    function withdrawFunds(uint256 amount) public {
+        require(msg.sender == owner, "BridgeTx: Not owner");
+        require(address(this).balance >= amount, "BridgeTx: Insufficient funds");
+        (bool sent, ) = owner.call{value: amount}("");
+        require(sent, "Withdraw Failed");
     }
 }

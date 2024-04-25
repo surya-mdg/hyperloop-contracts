@@ -10,7 +10,9 @@ contract BridgeTxScript is Script {
     function run() public {
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
         bridgeTx = new BridgeTx();
-        console.log("BridgeTx at : ", address(bridgeTx)); // 0x4a7d3d5691D88E8A4F56e36D364e0FFD8292E2ED
+        console.log("BridgeTx at : ", address(bridgeTx)); // 0x73c4a8d2d6cd1b723e48d4d5e2cccd3e436667a6
         vm.stopBroadcast();
     }
 }
+
+// https://sepolia.etherscan.io/address/0x73c4a8d2d6cd1b723e48d4d5e2cccd3e436667a6

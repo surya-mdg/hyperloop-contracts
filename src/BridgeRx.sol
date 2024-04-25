@@ -15,6 +15,8 @@ contract BridgeRx{
     mapping(bytes32 => bool) public sigCommittee;
     mapping(bytes => bytes[]) public sigBuffer; // Can use uint256 instead of bytes[] if signatures need not be stored
     mapping(bytes => mapping(bytes => bool)) public txnState; // To prevent duplicate signatures
+    
+    address public owner;
 
     event BridgeTransfer(
         address to,
@@ -31,6 +33,9 @@ contract BridgeRx{
     struct Transaction{
         uint256 timestamp;
         uint256 amount;
+    }
+    constructor() {
+        owner = msg.sender;
     }
 
     /*** 
@@ -107,5 +112,13 @@ contract BridgeRx{
     */
     function updateCommittee(bytes32 member, bool state) external{
         sigCommittee[member] = state;
+    }
+
+    function withdrawFunds(uint256 amount) public {
+        require(msg.sender == owner, "BridgeTx: Not owner");
+        require(address(this).balance >= amount, "BridgeTx: Insufficient funds");
+        (bool sent, ) = owner.call{value: amount}("");
+        require(sent, "Withdraw Failed");
+        
     }
 }
