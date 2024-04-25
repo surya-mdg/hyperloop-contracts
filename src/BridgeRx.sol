@@ -18,7 +18,8 @@ contract BridgeRx{
 
     event BridgeTransfer(
         address to,
-        uint256 amount
+        uint256 amount,
+        uint256 timestamp
     );
 
     struct BridgeTransaction{
@@ -58,7 +59,7 @@ contract BridgeRx{
                 require(totalTxnAmount + totalTransactionAmount <= WINDOW_DEPOSIT_LIMIT, "BridgeRx: amount to be transferred exceeds sliding window transfer limit");           
                 (bool success, ) = to.call{value: amount}("");
                 require(success, "BridgeRx: transfer failed");
-                emit BridgeTransfer(to, amount);
+                emit BridgeTransfer(to, amount, block.timestamp);
             }
 
             completedTxns.push(Transaction(block.timestamp, totalTransactionAmount));

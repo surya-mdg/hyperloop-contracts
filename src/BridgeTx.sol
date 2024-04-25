@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 contract BridgeTx{
     uint256 public constant WINDOW_SIZE = 12; //Curently represented as hours
@@ -19,7 +19,8 @@ contract BridgeTx{
         uint256 foreignChainId,
         uint256 amount,
         uint256 conversionRate,
-        uint256 conversionDecimals
+        uint256 conversionDecimals,
+        uint256 timestamp
     );
 
     struct BridgeTransfer {
@@ -36,6 +37,8 @@ contract BridgeTx{
     constructor() {
         // Currently random value
         conversionRates[1] = 3 * 1e21;
+        conversionRates[80002] = 3 * 1e21; // Amoy
+
     }
 
     /*** 
@@ -68,7 +71,8 @@ contract BridgeTx{
                 txn.foreignChainId,
                 txn.amount,
                 conversionRates[txn.foreignChainId],
-                CONVERSION_DECIMALS
+                CONVERSION_DECIMALS,
+                block.timestamp
             );
         }
 
