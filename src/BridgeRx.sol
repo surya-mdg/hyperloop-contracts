@@ -15,10 +15,13 @@ contract BridgeRx{
     mapping(bytes32 => bool) public sigCommittee;
     mapping(bytes => bytes[]) public sigBuffer; // Can use uint256 instead of bytes[] if signatures need not be stored
     mapping(bytes => mapping(bytes => bool)) public txnState; // To prevent duplicate signatures
+    
+    address public owner;
 
     event BridgeTransfer(
         address to,
-        uint256 amount
+        uint256 amount,
+        uint256 timestamp
     );
 
     struct BridgeTransaction{
@@ -30,6 +33,9 @@ contract BridgeRx{
     struct Transaction{
         uint256 timestamp;
         uint256 amount;
+    }
+    constructor() {
+        owner = msg.sender;
     }
 
     /*** 
@@ -58,7 +64,7 @@ contract BridgeRx{
                 require(totalTxnAmount + totalTransactionAmount <= WINDOW_DEPOSIT_LIMIT, "BridgeRx: amount to be transferred exceeds sliding window transfer limit");           
                 (bool success, ) = to.call{value: amount}("");
                 require(success, "BridgeRx: transfer failed");
-                emit BridgeTransfer(to, amount);
+                emit BridgeTransfer(to, amount, block.timestamp);
             }
 
             completedTxns.push(Transaction(block.timestamp, totalTransactionAmount));
@@ -106,5 +112,13 @@ contract BridgeRx{
     */
     function updateCommittee(bytes32 member, bool state) external{
         sigCommittee[member] = state;
+    }
+
+    function withdrawFunds(uint256 amount) public {
+        require(msg.sender == owner, "BridgeTx: Not owner");
+        require(address(this).balance >= amount, "BridgeTx: Insufficient funds");
+        (bool sent, ) = owner.call{value: amount}("");
+        require(sent, "Withdraw Failed");
+        
     }
 }

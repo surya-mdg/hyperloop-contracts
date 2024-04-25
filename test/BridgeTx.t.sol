@@ -30,12 +30,17 @@ contract SourceTest is Test {
 
         uint256 _chainId = 0;
         uint256 _actionId = uint256(keccak256(abi.encodePacked(_chainId, block.chainid, address(btx), block.timestamp)));
-        BridgeTx.BridgeTransfer memory message = BridgeTx.BridgeTransfer("0x000d", 1, 1 ether);     
+        BridgeTx.BridgeTransfer memory message = BridgeTx.BridgeTransfer("0x000d", 1, 1 ether);
         messageArr.push(message);
+
+        BridgeTx.BridgeTransfer memory message2 = BridgeTx.BridgeTransfer("0x000e", 1, 0.2 ether);
+        messageArr.push(message2);
 
         vm.expectEmit(false, false, false, true);
         emit BridgeTransaction(_actionId, user1, "0x000d", 1, 1 ether, 3 * 1e21, 1e18);
-        btx.postMessage{value: 1 ether}(messageArr);
+        vm.expectEmit(false, false, false, true);
+        emit BridgeTransaction(_actionId, user1, "0x000e", 1, 0.2 ether, 3 * 1e21, 1e18);
+        btx.postMessage{value: 1.2 ether}(messageArr);
     }
 
     function test_PostMessageFail() public{
