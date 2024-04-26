@@ -16,7 +16,7 @@ contract CallBridgeTxScript is Script {
         BridgeTx.BridgeTransfer[] memory bridgeTransfer = new BridgeTx.BridgeTransfer[] (1);
 
         BridgeTx.BridgeTransfer memory transfer1;
-        transfer1.foreignAddress = "0x9b6137E8C04774F04fBd84d8f7302B7c384A109A"; // Account 2
+        transfer1.foreignAddress = address(0x9b6137E8C04774F04fBd84d8f7302B7c384A109A); // Account 2
         transfer1.foreignChainId = 80002;
         transfer1.amount = 0.1 ether;
 
