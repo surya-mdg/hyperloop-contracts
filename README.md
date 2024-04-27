@@ -48,7 +48,12 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+$ source .env
+$ forge script script/BridgeTxDeploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
+$ forge verify-contract 0x371862509e523e8FB89EB8911254c14C882fcA96 --rpc-url $SEPOLIA_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY src/BridgeTx.sol:BridgeTx 
+
+$ forge script script/BridgeRxDeploy.s.sol --rpc-url $POLYGON_AMOY_RPC_URL --broadcast
+
 ```
 
 ### Cast

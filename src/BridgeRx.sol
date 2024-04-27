@@ -15,6 +15,7 @@ contract BridgeRx{
     mapping(bytes32 => bool) public sigCommittee;
     mapping(bytes => bytes[]) public sigBuffer; // Can use uint256 instead of bytes[] if signatures need not be stored
     mapping(bytes => mapping(bytes => bool)) public txnState; // To prevent duplicate signatures
+    mapping(bytes txn => bool completed) public completedBridgeReq; 
     
     address public owner;
 
@@ -48,6 +49,7 @@ contract BridgeRx{
         verifySig(signer, sig, txn);
         require(sigCommittee[signer], "BridgeRx: signer not part of committee");    
         require(!txnState[txn][sig], "BridgeRx: transaction has already been verified");      
+        require(!completedBridgeReq[txn], "BridgeRx: This request already completed");
         sigBuffer[txn].push(sig);
         txnState[txn][sig] = true;
 
@@ -67,7 +69,7 @@ contract BridgeRx{
                 require(success, "BridgeRx: transfer failed");
                 emit BridgeTransfer(to, amount, block.timestamp);
             }
-
+            completedBridgeReq[txn] = true;
             completedTxns.push(Transaction(block.timestamp, totalTransactionAmount));
             totalTxnAmount += totalTransactionAmount;     
         }
@@ -128,7 +130,6 @@ contract BridgeRx{
         require(address(this).balance >= amount, "BridgeRx: Insufficient funds");
         (bool sent, ) = owner.call{value: amount}("");
         require(sent, "Withdraw Failed");
-        
     }
 
     function sendFunds() payable external returns (address){
@@ -142,5 +143,9 @@ contract BridgeRx{
 
     function getMessageBytes(bytes[] memory _message) public pure returns (bytes memory msgBytes) {
         msgBytes = abi.encode(_message);
+    }
+
+    receive() external payable{
+        
     }
 }
