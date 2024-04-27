@@ -11,8 +11,9 @@ contract CallBridgeRxScript is Script {
     BridgeRx public bridgeRx;
     function run() public {
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
-        bridgeRx = BridgeRx(payable(0x88B94EB0e4319EAd868162f98f9f54CaBc14CfAD));
-        callUpdateCommittee(true, true, true, true, true);
+        bridgeRx = BridgeRx(payable(0xE240cCa0469ee7bA9F49C460BCb3AE2b3Dd7d70B));
+        // callUpdateCommittee(true, true, true, true, true);
+        // callWithdraw();
         vm.stopBroadcast();
     }
     function callUpdateCommittee(bool n1, bool n2, bool n3, bool n4, bool n5) public {
@@ -45,5 +46,9 @@ contract CallBridgeRxScript is Script {
         bytes memory txns = hex"00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000601ca1ecb509521825e5420c69091debb2205537cfc00542447ff7a4e341cfdc82000000000000000000000000699bceebd59a5b52bb586c737cd7ba636f3fe602000000000000000000000000000000000000000000000000002386f26fc10000";
         
         bridgeRx.executeMessage(signer1, sig, txns);
+    }
+
+    function callWithdraw() public{
+        bridgeRx.withdrawFunds(0.399 ether);
     }
 }

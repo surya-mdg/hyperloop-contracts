@@ -50,7 +50,7 @@ $ anvil
 ```shell
 $ source .env
 $ forge script script/BridgeTxDeploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
-$ forge verify-contract 0x371862509e523e8FB89EB8911254c14C882fcA96 --rpc-url $SEPOLIA_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY src/BridgeTx.sol:BridgeTx 
+$ forge verify-contract 0x23Dd1Aa37b5c81d64586c021330D61D3Ad55AaFB --rpc-url $SEPOLIA_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY src/BridgeTx.sol:BridgeTx 
 
 $ forge script script/BridgeRxDeploy.s.sol --rpc-url $POLYGON_AMOY_RPC_URL --broadcast
 

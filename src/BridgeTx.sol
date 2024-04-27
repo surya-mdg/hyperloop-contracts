@@ -80,7 +80,7 @@ contract BridgeTx{
             );
         }
 
-        require(totalTransactionAmount == msg.value, "BridgeTx: total transaction amount does not match msg.value");
+        require(msg.value >= totalTransactionAmount, "BridgeTx: total transaction amount does not match msg.value");
         transactions.push(Transaction(block.timestamp, totalTransactionAmount));
         totalAmount += totalTransactionAmount;
     }

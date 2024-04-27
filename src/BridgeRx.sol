@@ -49,10 +49,11 @@ contract BridgeRx{
         verifySig(signer, sig, txn);
         require(sigCommittee[signer], "BridgeRx: signer not part of committee");    
         require(!txnState[txn][sig], "BridgeRx: transaction has already been verified");      
-        require(!completedBridgeReq[txn], "BridgeRx: This request already completed");
         sigBuffer[txn].push(sig);
         txnState[txn][sig] = true;
-
+        if (completedBridgeReq[txn]) {
+            return;
+        }
         bytes[] memory txnHashes = abi.decode(txn, (bytes[]));
 
         if(sigBuffer[txn].length > sigCommitteeSize / 2){
@@ -146,6 +147,6 @@ contract BridgeRx{
     }
 
     receive() external payable{
-        
+
     }
 }
