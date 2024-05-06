@@ -122,7 +122,6 @@ contract BridgeRx{
             require(sigCommittee[member], "BridgeRx: member does not exist");
             sigCommitteeSize--;
         }
-
         sigCommittee[member] = state;
     }
 

@@ -11,25 +11,58 @@ contract CallBridgeRxScript is Script {
     BridgeRx public bridgeRx;
     function run() public {
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
-        bridgeRx = BridgeRx(payable(0xE240cCa0469ee7bA9F49C460BCb3AE2b3Dd7d70B));
-        // callUpdateCommittee(true, true, true, true, true);
+        bridgeRx = BridgeRx(payable(0xAa92a60b75f5C060d0BEB6EE24fE8DeBC8F8e7D9));
+        // callUpdateCommittee1(true);
+        // callUpdateCommittee2(false);
         // callWithdraw();
         vm.stopBroadcast();
     }
-    function callUpdateCommittee(bool n1, bool n2, bool n3, bool n4, bool n5) public {
-
+    function callUpdateCommittee1(bool status) public {
         bytes32 node1 = vm.envBytes32("NODE1_PUBLIC_KEY");
         bytes32 node2 = vm.envBytes32("NODE2_PUBLIC_KEY");
         bytes32 node3 = vm.envBytes32("NODE3_PUBLIC_KEY");
         bytes32 node4 = vm.envBytes32("NODE4_PUBLIC_KEY");
         bytes32 node5 = vm.envBytes32("NODE5_PUBLIC_KEY");
+        bytes32 node6 = vm.envBytes32("NODE6_PUBLIC_KEY");
+        bytes32 node7 = vm.envBytes32("NODE7_PUBLIC_KEY");
+        bytes32 node8 = vm.envBytes32("NODE8_PUBLIC_KEY");
+        bytes32 node9 = vm.envBytes32("NODE9_PUBLIC_KEY");
+        bytes32 node10 = vm.envBytes32("NODE10_PUBLIC_KEY");
 
-        bridgeRx.updateCommittee(node1, n1);
-        bridgeRx.updateCommittee(node2, n2);
-        bridgeRx.updateCommittee(node3, n3);
-        bridgeRx.updateCommittee(node4, n4);
-        bridgeRx.updateCommittee(node5, n5);
+        // bridgeRx.updateCommittee(node1, status);
+        // bridgeRx.updateCommittee(node2, status);
+        // bridgeRx.updateCommittee(node3, status);
+        // bridgeRx.updateCommittee(node4, status);
+        // bridgeRx.updateCommittee(node5, status);
+        // bridgeRx.updateCommittee(node6, status);
+        // bridgeRx.updateCommittee(node7, status);
+        // bridgeRx.updateCommittee(node8, status);
+        // bridgeRx.updateCommittee(node9, status);
+        // bridgeRx.updateCommittee(node10, status);
+    }
 
+    function callUpdateCommittee2(bool status) public {
+        bytes32 node11 = vm.envBytes32("NODE11_PUBLIC_KEY");
+        bytes32 node12 = vm.envBytes32("NODE12_PUBLIC_KEY");
+        bytes32 node13 = vm.envBytes32("NODE13_PUBLIC_KEY");
+        bytes32 node14 = vm.envBytes32("NODE14_PUBLIC_KEY");
+        bytes32 node15 = vm.envBytes32("NODE15_PUBLIC_KEY");
+        bytes32 node16 = vm.envBytes32("NODE16_PUBLIC_KEY");
+        bytes32 node17 = vm.envBytes32("NODE17_PUBLIC_KEY");
+        bytes32 node18 = vm.envBytes32("NODE18_PUBLIC_KEY");
+        bytes32 node19 = vm.envBytes32("NODE19_PUBLIC_KEY");
+        bytes32 node20 = vm.envBytes32("NODE20_PUBLIC_KEY");
+
+        bridgeRx.updateCommittee(node11, status);
+        bridgeRx.updateCommittee(node12, status);
+        bridgeRx.updateCommittee(node13, status);
+        bridgeRx.updateCommittee(node14, status);
+        bridgeRx.updateCommittee(node15, status);
+        bridgeRx.updateCommittee(node16, status);
+        bridgeRx.updateCommittee(node17, status);
+        bridgeRx.updateCommittee(node18, status);
+        bridgeRx.updateCommittee(node19, status);
+        bridgeRx.updateCommittee(node20, status);
     }
 
     function simulateNode() public {
