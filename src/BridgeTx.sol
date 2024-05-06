@@ -3,29 +3,32 @@ pragma solidity 0.8.24;
 
 contract BridgeTx{
     uint256 public constant WINDOW_SIZE = 12; //Curently represented as hours
-    uint256 public constant WINDOW_DEPOSIT_LIMIT = 2 ether;
+    uint256 public constant WINDOW_DEPOSIT_LIMIT = 10 ether;
     uint256 public constant CONVERSION_DECIMALS = 1e18;
 
+    address public owner;
     uint256 chainActionId = 0;
     uint256 totalAmount = 0;
     uint256 slidingWindowIndex = 0;
     Transaction[] transactions;
     mapping(uint256 => uint256) public conversionRates;
-    address public owner;
+
+    uint256 public sigCommitteeSize = 0;
+    mapping(bytes32 => bool) public sigCommittee;
 
     event BridgeTransaction(
-        uint256 globalActionId,
+        uint256 indexed globalActionId,
+        address indexed foreignAddress,
+        uint256 indexed amount,
+        uint256 timestamp,
         address from,
-        string foreignAddress,
         uint256 foreignChainId,
-        uint256 amount,
         uint256 conversionRate,
-        uint256 conversionDecimals,
-        uint256 timestamp
+        uint256 conversionDecimals
     );
 
     struct BridgeTransfer {
-        string foreignAddress;
+        address foreignAddress;
         uint256 foreignChainId;
         uint256 amount;
     }
@@ -40,7 +43,6 @@ contract BridgeTx{
         owner = msg.sender;
         conversionRates[1] = 3 * 1e21;
         conversionRates[80002] = 3 * 1e21; // Amoy
-
     }
 
     /*** 
@@ -68,17 +70,17 @@ contract BridgeTx{
 
             emit BridgeTransaction(
                 nextGlobalActionId(),
-                msg.sender,
                 txn.foreignAddress,
-                txn.foreignChainId,
                 txn.amount,
+                block.timestamp,
+                msg.sender,
+                txn.foreignChainId,
                 conversionRates[txn.foreignChainId],
-                CONVERSION_DECIMALS,
-                block.timestamp
+                CONVERSION_DECIMALS
             );
         }
 
-        require(totalTransactionAmount == msg.value, "BridgeTx: total transaction amount does not match msg.value");
+        require(msg.value >= totalTransactionAmount, "BridgeTx: total transaction amount does not match msg.value");
         transactions.push(Transaction(block.timestamp, totalTransactionAmount));
         totalAmount += totalTransactionAmount;
     }

@@ -10,11 +10,12 @@ contract SourceTest is Test {
     BridgeTx.BridgeTransfer[] public messageArr;
 
     event BridgeTransaction(
-        uint256 globalActionId,
+        uint256 indexed globalActionId,
+        address indexed foreignAddress,
+        uint256 indexed amount,
+        uint256 timestamp,
         address from,
-        string foreignAddress,
         uint256 foreignChainId,
-        uint256 amount,
         uint256 conversionRate,
         uint256 conversionDecimals
     );
@@ -30,16 +31,16 @@ contract SourceTest is Test {
 
         uint256 _chainId = 0;
         uint256 _actionId = uint256(keccak256(abi.encodePacked(_chainId, block.chainid, address(btx), block.timestamp)));
-        BridgeTx.BridgeTransfer memory message = BridgeTx.BridgeTransfer("0x000d", 1, 1 ether);
+        BridgeTx.BridgeTransfer memory message = BridgeTx.BridgeTransfer(address(0x000d), 1, 1 ether);
         messageArr.push(message);
 
-        BridgeTx.BridgeTransfer memory message2 = BridgeTx.BridgeTransfer("0x000e", 1, 0.2 ether);
+        BridgeTx.BridgeTransfer memory message2 = BridgeTx.BridgeTransfer(address(0x000d), 1, 0.2 ether);
         messageArr.push(message2);
 
+        vm.expectEmit(true, true, true, true);
+        emit BridgeTransaction(_actionId, address(0x000d), 1 ether, block.timestamp, user1,  1, 3 * 1e21, 1e18);
         vm.expectEmit(false, false, false, true);
-        emit BridgeTransaction(_actionId, user1, "0x000d", 1, 1 ether, 3 * 1e21, 1e18);
-        vm.expectEmit(false, false, false, true);
-        emit BridgeTransaction(_actionId, user1, "0x000e", 1, 0.2 ether, 3 * 1e21, 1e18);
+        emit BridgeTransaction(_actionId, address(0x000d), 0.2 ether, block.timestamp, user1,  1, 3 * 1e21, 1e18);
         btx.postMessage{value: 1.2 ether}(messageArr);
     }
 
@@ -47,7 +48,7 @@ contract SourceTest is Test {
         vm.warp(2 days);
         vm.startPrank(user1);
 
-        BridgeTx.BridgeTransfer memory message = BridgeTx.BridgeTransfer("0x000d", 1, 4 ether);     
+        BridgeTx.BridgeTransfer memory message = BridgeTx.BridgeTransfer(address(0x000d), 1, 4 ether);     
         messageArr.push(message);
 
         vm.expectRevert("BridgeTx: amount to be transferred exceeds slinding window transfer limit");
