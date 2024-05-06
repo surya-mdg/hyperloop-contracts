@@ -8,6 +8,9 @@ contract BridgeTx{
     uint256 public constant WINDOW_DEPOSIT_LIMIT = 10 ether;
     uint256 public constant CONVERSION_DECIMALS = 1e18;
 
+    uint256 public actionId;
+    uint256 public batchActionId;
+
     address public owner;
     uint256 chainActionId = 0;
     uint256 totalAmount = 0;
@@ -20,32 +23,46 @@ contract BridgeTx{
     mapping(bytes => bytes[]) public sigBuffer; // Can use uint256 instead of bytes[] if signatures need not be stored
     mapping(bytes => mapping(bytes => bool)) public txnState; // To prevent duplicate signatures
 
-    event BridgeTransaction(
-        uint256 indexed globalActionId,
-        address indexed foreignAddress,
-        uint256 indexed amount,
-        uint256 timestamp,
-        address from,
-        uint256 foreignChainId,
-        uint256 conversionRate,
-        uint256 conversionDecimals
+    event BridgeTx(
+        uint256 indexed actionId, // could be globalActionId - if batchedEmit is false // globalBatchActionId - if batchedEmit is true
+        bytes[] indexed txBridgeTransactionBytes; // array of abi.encode(BridgeTransaction Struct)
+        address indexed from; // emitter
+        uint256 timestamp; // emitted time
+        bool batchedEmit
     );
 
-    event RevertTransaction(
+    event RevertedTransaction(
         uint256 indexed globalActionId,
-        address indexed to,
+        address indexed from,
         uint256 indexed amount
+        uint256 timePassed;
     );
 
+    // Emitting as txBridgeTransactionBytes. Passing to relay node 
+    struct BridgeTransaction{
+        uint256 actionId;
+        address foreignAddress,
+        uint256 foreignChainId,
+        uint256 amount,
+        address from; // Duplicate but required for reverting
+        uint256 conversionRate,
+        uint256 conversionDecimals,
+        uint256 revertPeriod
+    }
+
+    // @notice: Passed by user to the postMessage()
     struct BridgeTransfer {
         address foreignAddress;
         uint256 foreignChainId;
         uint256 amount;
+        uint256 revertPeriod;
     }
+
+    
 
     struct RevertTransfer{
         uint256 actionId;
-        address to;
+        address emitter;
         uint256 amount;
     }
 
@@ -65,40 +82,79 @@ contract BridgeTx{
      * @notice: Generates unique action ID
      * @return: unique action ID
     */
-    function nextGlobalActionId() private returns (uint256) { 
-        return uint256(keccak256(abi.encodePacked(chainActionId++, block.chainid, address(this), block.timestamp)));
+    function nextGlobalActionId() private view returns (uint256) { 
+        // return uint256(keccak256(abi.encodePacked(chainActionId++, block.chainid, address(this), block.timestamp)));
+        actionId = actionId + 1;
+        return actionId;
+    }
+
+    function nextGlobalBatchActionId() private view returns (uint256){
+        batchActionId = batchActionId + 1;
+        return batchActionId;
     }
 
     /*** 
      * @notice: Check if transaction/batch of transactions don't violate sliding window limit & emit transactions
      * @param: txns - transactions to be made
     */
-    function postMessage(BridgeTransfer[] memory txns) external payable {
+    function postMessage(BridgeTransfer[] memory txns) external payable returns(uint256){
         require(msg.value > 0, "BridgeTx: msg.value needs to be greater than 0");
         updateSlidingWindow(block.timestamp - (WINDOW_SIZE * 3600));
 
         uint256 totalTransactionAmount = 0;
+        
+        uint256 _actionId; // If txns.length == 1 only updates once
+
+        bytes[] memory txBridgeTransactionBytes = new bytes[](txns.length);
         for (uint256 i = 0; i < txns.length; i++) {
             BridgeTransfer memory txn = txns[i];
             require(conversionRates[txn.foreignChainId] > 0, "BridgeTx: unsupported foreignChainId");
             totalTransactionAmount += txn.amount;
             require(totalAmount + totalTransactionAmount <= WINDOW_DEPOSIT_LIMIT, "BridgeTx: amount to be transferred exceeds slinding window transfer limit");
 
-            emit BridgeTransaction(
-                nextGlobalActionId(),
-                txn.foreignAddress,
-                txn.amount,
-                block.timestamp,
-                msg.sender,
-                txn.foreignChainId,
-                conversionRates[txn.foreignChainId],
-                CONVERSION_DECIMALS
-            );
+            BridgeTransaction memory btx;
+            _actionId = nextGlobalActionId();
+            btx.actionId = _actionId;
+            btx.foreignAddress = txn.foreignAddress;
+            btx.foreignChainId = txn.foreignChainId;
+            btx.amount = txn.amount;
+            btx.from = msg.sender;
+            btx.conversionRate = conversionRates[txn.foreignChainId];
+            btx.conversionDecimals = CONVERSION_DECIMALS;
+
+            txBridgeTransactionBytes[i] = abi.encode(btx);
         }
 
-        require(totalTransactionAmount == msg.value, "BridgeTx: total transaction amount does not match msg.value");
+        require(msg.value >= totalTransactionAmount, "BridgeTx: total transaction amount does not match msg.value");
         transactions.push(Transaction(block.timestamp, totalTransactionAmount));
         totalAmount += totalTransactionAmount;
+
+        if (txns.length == 1){
+            emit BridgeTx(
+                _actionId,
+                txBridgeTransactionBytes,
+                msg.sender,
+                false, // not a batched emit
+                block.timestamp
+            )
+            return _actionId;
+        }
+
+        uint256 _batchActionId = nextGlobalBatchActionId();
+        emit BridgeTx(
+            _batchActionId,
+            txBridgeTransactionBytes,
+            msg.sender,
+            true, // batched emit
+            block.timestamp
+        )
+        return _batchActionId;
+
+        
+    }
+
+    function revertTransaction(RevertTransfer memory reverted) public{
+        
     }
 
     /*** 
@@ -145,6 +201,7 @@ contract BridgeTx{
             }   
         }
     } 
+
 
     /*** 
      * @notice: Verifies the ed25519 signature

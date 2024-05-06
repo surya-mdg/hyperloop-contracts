@@ -15,6 +15,7 @@ contract BridgeRx{
     mapping(bytes32 => bool) public sigCommittee;
     mapping(bytes => bytes[]) public sigBuffer; // Can use uint256 instead of bytes[] if signatures need not be stored
     mapping(bytes => mapping(bytes => bool)) public txnState; // To prevent duplicate signatures
+    mapping(bytes txn => bool completed) public completedBridgeReq; 
     
     address public owner;
 
@@ -24,10 +25,21 @@ contract BridgeRx{
         uint256 timestamp
     );
 
+    event RevertedTransaction(
+        uint256 indexed globalActionId,
+        address indexed from,
+        uint256 indexed amount
+        uint256 timePassed;
+    );
+
     struct BridgeTransaction{
         uint256 actionId;
-        address to;
-        uint256 amount;
+        address foreignAddress,
+        uint256 foreignChainId,
+        uint256 amount,
+        uint256 conversionRate,
+        uint256 conversionDecimals,
+        uint256 revertPeriod
     }
 
     struct Transaction{
@@ -50,7 +62,9 @@ contract BridgeRx{
         require(!txnState[txn][sig], "BridgeRx: transaction has already been verified");      
         sigBuffer[txn].push(sig);
         txnState[txn][sig] = true;
-
+        if (completedBridgeReq[txn]) {
+            return;
+        }
         bytes[] memory txnHashes = abi.decode(txn, (bytes[]));
 
         if(sigBuffer[txn].length > sigCommitteeSize / 2){
@@ -59,7 +73,15 @@ contract BridgeRx{
 
             for(uint256 i = 0; i < txnHashes.length; i++){
                 BridgeTransaction memory _txn = abi.decode(txnHashes[i], (BridgeTransaction));
-                (, address to, uint256 amount) = (_txn.actionId, _txn.to, _txn.amount);
+                (uint actionId, address to, uint256 amount, address from, uint256 revertPeriod) = (_txn.actionId, _txn.to, _txn.amount, _txn.amount, _txn.revertPeriod);
+
+                // Revert logic
+                if (revertPeriod < block.timestamp){
+                    emit RevertedTransaction(
+                        actionId;
+                        // LEFT
+                    )
+                }
 
                 totalTransactionAmount += amount;
                 require(totalTxnAmount + totalTransactionAmount <= WINDOW_DEPOSIT_LIMIT, "BridgeRx: amount to be transferred exceeds sliding window transfer limit");           
@@ -67,7 +89,7 @@ contract BridgeRx{
                 require(success, "BridgeRx: transfer failed");
                 emit BridgeTransfer(to, amount, block.timestamp);
             }
-
+            completedBridgeReq[txn] = true;
             completedTxns.push(Transaction(block.timestamp, totalTransactionAmount));
             totalTxnAmount += totalTransactionAmount;     
         }
@@ -119,7 +141,6 @@ contract BridgeRx{
             require(sigCommittee[member], "BridgeRx: member does not exist");
             sigCommitteeSize--;
         }
-
         sigCommittee[member] = state;
     }
 
@@ -128,7 +149,6 @@ contract BridgeRx{
         require(address(this).balance >= amount, "BridgeRx: Insufficient funds");
         (bool sent, ) = owner.call{value: amount}("");
         require(sent, "Withdraw Failed");
-        
     }
 
     function sendFunds() payable external returns (address){
@@ -142,5 +162,9 @@ contract BridgeRx{
 
     function getMessageBytes(bytes[] memory _message) public pure returns (bytes memory msgBytes) {
         msgBytes = abi.encode(_message);
+    }
+
+    receive() external payable{
+
     }
 }
