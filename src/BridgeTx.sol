@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.24;
 
+import {Ed25519} from "../lib/encryption/Ed25519.sol";
+
 contract BridgeTx{
     uint256 public constant WINDOW_SIZE = 12; //Curently represented as hours
     uint256 public constant WINDOW_DEPOSIT_LIMIT = 10 ether;
@@ -15,6 +17,8 @@ contract BridgeTx{
 
     uint256 public sigCommitteeSize = 0;
     mapping(bytes32 => bool) public sigCommittee;
+    mapping(bytes => bytes[]) public sigBuffer; // Can use uint256 instead of bytes[] if signatures need not be stored
+    mapping(bytes => mapping(bytes => bool)) public txnState; // To prevent duplicate signatures
 
     event BridgeTransaction(
         uint256 indexed globalActionId,
@@ -27,9 +31,21 @@ contract BridgeTx{
         uint256 conversionDecimals
     );
 
+    event RevertTransaction(
+        uint256 indexed globalActionId,
+        address indexed to,
+        uint256 indexed amount
+    );
+
     struct BridgeTransfer {
         address foreignAddress;
         uint256 foreignChainId;
+        uint256 amount;
+    }
+
+    struct RevertTransfer{
+        uint256 actionId;
+        address to;
         uint256 amount;
     }
 
@@ -101,6 +117,69 @@ contract BridgeTx{
         }
     }
 
+    // --------------------- REVERT LOGIC ------------------------
+
+    /*** 
+     * @notice: Performs the revert txns which have valid ed25519 signature
+     * @param: signer - public key of the node that signed the completedTxns
+     * @param: sig - ed25519 signature generated for the message
+     * @param: txn - revert txn message for which the signature has been generated
+    */
+    function executeMessage(bytes32 signer, bytes memory sig, bytes memory txn) external {
+        verifySig(signer, sig, txn);
+        require(sigCommittee[signer], "BridgeTx: signer not part of committee");    
+        require(!txnState[txn][sig], "BridgeTx: transaction has already been verified");      
+        sigBuffer[txn].push(sig);
+        txnState[txn][sig] = true;
+
+        bytes[] memory txnHashes = abi.decode(txn, (bytes[]));
+
+        if(sigBuffer[txn].length > sigCommitteeSize / 2){
+            for(uint256 i = 0; i < txnHashes.length; i++){
+                RevertTransfer memory _txn = abi.decode(txnHashes[i], (RevertTransfer));
+                (uint256 actionId, address to, uint256 amount) = (_txn.actionId, _txn.to, _txn.amount);
+       
+                (bool success, ) = to.call{value: amount}("");
+                require(success, "BridgeTx: revert transfer failed");
+                emit RevertTransaction(actionId, to, amount);
+            }   
+        }
+    } 
+
+    /*** 
+     * @notice: Verifies the ed25519 signature
+     * @param: publicKey - public key of the node that signed this message
+     * @param: sig - ed25519 signature generated for the message
+     * @param: message - message that has been signed using the node private key
+    */
+    function verifySig(bytes32 publicKey, bytes memory sig, bytes memory message) internal pure {
+        bytes32 r;
+        bytes32 s;
+        assembly{
+            r:= mload(add(sig,32))
+            s:= mload(add(sig,64))
+        }
+        require(Ed25519.verify(publicKey, r, s, message), "BridgeTx: signature invalid");
+    }
+
+    /*** 
+     * @notice: Updates the signature committee
+     * @param: member - public key of node
+     * @param: state - is node part of signature committee
+    */
+    function updateCommittee(bytes32 member, bool state) external{
+        if(state){
+            require(!sigCommittee[member], "BridgeTx: member already exists");
+            sigCommitteeSize++;
+        }
+        else{
+            require(sigCommittee[member], "BridgeTx: member does not exist");
+            sigCommitteeSize--;
+        }
+
+        sigCommittee[member] = state;
+    }
+    
     function withdrawFunds(uint256 amount) public {
         require(msg.sender == owner, "BridgeTx: Not owner");
         require(address(this).balance >= amount, "BridgeTx: Insufficient funds");
