@@ -27,7 +27,7 @@ contract BridgeRx{
 
     event RevertedReq(
         uint256 indexed globalActionId,
-        RevertTransaction indexed txRevertTransaction
+        RevertTransaction txRevertTransaction
     );
 
     struct BridgeTransaction{

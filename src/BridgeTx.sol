@@ -35,8 +35,7 @@ contract BridgeTx{
     event RevertedReq(
         uint256 indexed globalActionId,
         address indexed from,
-        uint256 indexed amount,
-        int256 timePassed
+        uint256 indexed amount
     );
 
     event RevertCompleted(
@@ -61,7 +60,6 @@ contract BridgeTx{
         uint256 actionId;
         address from;
         uint256 amount;
-        int256 timePassed;
     }
 
     // @notice: Passed by user to the postMessage()
