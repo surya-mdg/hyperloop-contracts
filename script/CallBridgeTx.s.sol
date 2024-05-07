@@ -9,7 +9,7 @@ contract CallBridgeTxScript is Script {
     BridgeTx public bridgeTx;
     function run() public {
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-        bridgeTx = BridgeTx(0x4a7d3d5691D88E8A4F56e36D364e0FFD8292E2ED);
+        bridgeTx = BridgeTx(payable(0x4a7d3d5691D88E8A4F56e36D364e0FFD8292E2ED));
         callPostMessage();
     }
     function callPostMessage() public {

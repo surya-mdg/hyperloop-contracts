@@ -10,6 +10,7 @@ contract BridgeTx{
 
     uint256 public actionId;
     uint256 public batchActionId;
+    uint256 public revertedAmoutTillNow;
 
     address public owner;
     uint256 chainActionId = 0;
@@ -22,32 +23,45 @@ contract BridgeTx{
     mapping(bytes32 => bool) public sigCommittee;
     mapping(bytes => bytes[]) public sigBuffer; // Can use uint256 instead of bytes[] if signatures need not be stored
     mapping(bytes => mapping(bytes => bool)) public txnState; // To prevent duplicate signatures
+    mapping(bytes txn => bool completed) public completedBridgeReq; 
 
-    event BridgeTx(
+    event BridgeTxReq(
         uint256 indexed actionId, // could be globalActionId - if batchedEmit is false // globalBatchActionId - if batchedEmit is true
-        bytes[] indexed txBridgeTransactionBytes; // array of abi.encode(BridgeTransaction Struct)
-        address indexed from; // emitter
-        uint256 timestamp; // emitted time
-        bool batchedEmit
+        address indexed from, // emitter
+        uint256 indexed timestamp, // emitted time
+        bytes[] txBridgeTransactionBytes // array of abi.encode(BridgeTransaction Struct)
     );
 
-    event RevertedTransaction(
+    event RevertedReq(
         uint256 indexed globalActionId,
         address indexed from,
-        uint256 indexed amount
-        uint256 timePassed;
+        uint256 indexed amount,
+        int256 timePassed
+    );
+
+    event RevertCompleted(
+        uint256 actionId,
+        address from,
+        uint256 amount
     );
 
     // Emitting as txBridgeTransactionBytes. Passing to relay node 
     struct BridgeTransaction{
         uint256 actionId;
-        address foreignAddress,
-        uint256 foreignChainId,
-        uint256 amount,
+        address foreignAddress;
+        uint256 foreignChainId;
+        uint256 amount;
         address from; // Duplicate but required for reverting
-        uint256 conversionRate,
-        uint256 conversionDecimals,
-        uint256 revertPeriod
+        uint256 conversionRate;
+        uint256 conversionDecimals;
+        uint256 revertPeriod; // future timestamp 
+    }
+
+    struct RevertTransaction{
+        uint256 actionId;
+        address from;
+        uint256 amount;
+        int256 timePassed;
     }
 
     // @notice: Passed by user to the postMessage()
@@ -56,14 +70,6 @@ contract BridgeTx{
         uint256 foreignChainId;
         uint256 amount;
         uint256 revertPeriod;
-    }
-
-    
-
-    struct RevertTransfer{
-        uint256 actionId;
-        address emitter;
-        uint256 amount;
     }
 
     struct Transaction{
@@ -82,13 +88,13 @@ contract BridgeTx{
      * @notice: Generates unique action ID
      * @return: unique action ID
     */
-    function nextGlobalActionId() private view returns (uint256) { 
+    function nextGlobalActionId() private returns (uint256) { 
         // return uint256(keccak256(abi.encodePacked(chainActionId++, block.chainid, address(this), block.timestamp)));
         actionId = actionId + 1;
         return actionId;
     }
 
-    function nextGlobalBatchActionId() private view returns (uint256){
+    function nextGlobalBatchActionId() private returns (uint256){
         batchActionId = batchActionId + 1;
         return batchActionId;
     }
@@ -121,40 +127,55 @@ contract BridgeTx{
             btx.from = msg.sender;
             btx.conversionRate = conversionRates[txn.foreignChainId];
             btx.conversionDecimals = CONVERSION_DECIMALS;
+            btx.revertPeriod = txn.revertPeriod;
 
             txBridgeTransactionBytes[i] = abi.encode(btx);
         }
-
         require(msg.value >= totalTransactionAmount, "BridgeTx: total transaction amount does not match msg.value");
         transactions.push(Transaction(block.timestamp, totalTransactionAmount));
         totalAmount += totalTransactionAmount;
 
         if (txns.length == 1){
-            emit BridgeTx(
+            emit BridgeTxReq(
                 _actionId,
-                txBridgeTransactionBytes,
                 msg.sender,
-                false, // not a batched emit
-                block.timestamp
-            )
+                block.timestamp,
+                txBridgeTransactionBytes
+            );
             return _actionId;
         }
 
         uint256 _batchActionId = nextGlobalBatchActionId();
-        emit BridgeTx(
+        emit BridgeTxReq(
             _batchActionId,
-            txBridgeTransactionBytes,
             msg.sender,
-            true, // batched emit
-            block.timestamp
-        )
+            block.timestamp,
+            txBridgeTransactionBytes
+        );
         return _batchActionId;
 
         
     }
 
-    function revertTransaction(RevertTransfer memory reverted) public{
-        
+    function revertTransaction(bytes32 signer, bytes memory sig, bytes memory txn) public{
+        verifySig(signer, sig, txn);
+        require(sigCommittee[signer], "BridgeRx: signer not part of committee");    
+        require(!txnState[txn][sig], "BridgeRx: transaction has already been verified");      
+        sigBuffer[txn].push(sig);
+        txnState[txn][sig] = true;
+        if (completedBridgeReq[txn]) {
+            return;
+        }
+
+        if(sigBuffer[txn].length > sigCommitteeSize / 2){
+            RevertTransaction memory rtx = abi.decode(txn, (RevertTransaction));
+            (uint256 _actionId, address _from, uint256 _amount) = (rtx.actionId, rtx.from, rtx.amount);
+            
+            (bool success, ) = _from.call{value: _amount}("");
+            require(success, "BridgeTx: revert transfer failed");
+            emit RevertCompleted(_actionId, _from, _amount);
+            completedBridgeReq[txn] = true;
+        }
     }
 
     /*** 
@@ -173,34 +194,34 @@ contract BridgeTx{
         }
     }
 
-    // --------------------- REVERT LOGIC ------------------------
+    // // --------------------- REVERT LOGIC ------------------------
 
-    /*** 
-     * @notice: Performs the revert txns which have valid ed25519 signature
-     * @param: signer - public key of the node that signed the completedTxns
-     * @param: sig - ed25519 signature generated for the message
-     * @param: txn - revert txn message for which the signature has been generated
-    */
-    function executeMessage(bytes32 signer, bytes memory sig, bytes memory txn) external {
-        verifySig(signer, sig, txn);
-        require(sigCommittee[signer], "BridgeTx: signer not part of committee");    
-        require(!txnState[txn][sig], "BridgeTx: transaction has already been verified");      
-        sigBuffer[txn].push(sig);
-        txnState[txn][sig] = true;
+    // /*** 
+    //  * @notice: Performs the revert txns which have valid ed25519 signature
+    //  * @param: signer - public key of the node that signed the completedTxns
+    //  * @param: sig - ed25519 signature generated for the message
+    //  * @param: txn - revert txn message for which the signature has been generated
+    // */
+    // function executeMessage(bytes32 signer, bytes memory sig, bytes memory txn) external {
+    //     verifySig(signer, sig, txn);
+    //     require(sigCommittee[signer], "BridgeTx: signer not part of committee");    
+    //     require(!txnState[txn][sig], "BridgeTx: transaction has already been verified");      
+    //     sigBuffer[txn].push(sig);
+    //     txnState[txn][sig] = true;
 
-        bytes[] memory txnHashes = abi.decode(txn, (bytes[]));
+    //     bytes[] memory txnHashes = abi.decode(txn, (bytes[]));
 
-        if(sigBuffer[txn].length > sigCommitteeSize / 2){
-            for(uint256 i = 0; i < txnHashes.length; i++){
-                RevertTransfer memory _txn = abi.decode(txnHashes[i], (RevertTransfer));
-                (uint256 actionId, address to, uint256 amount) = (_txn.actionId, _txn.to, _txn.amount);
+    //     if(sigBuffer[txn].length > sigCommitteeSize / 2){
+    //         for(uint256 i = 0; i < txnHashes.length; i++){
+    //             RevertTransfer memory _txn = abi.decode(txnHashes[i], (RevertTransfer));
+    //             (uint256 actionId, address to, uint256 amount) = (_txn.actionId, _txn.to, _txn.amount);
        
-                (bool success, ) = to.call{value: amount}("");
-                require(success, "BridgeTx: revert transfer failed");
-                emit RevertTransaction(actionId, to, amount);
-            }   
-        }
-    } 
+    //             (bool success, ) = to.call{value: amount}("");
+    //             require(success, "BridgeTx: revert transfer failed");
+    //             emit RevertTransaction(actionId, to, amount);
+    //         }   
+    //     }
+    // } 
 
 
     /*** 
